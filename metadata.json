@@ -1,0 +1,6 @@
+{
+  "name": "Assenze Collegio",
+  "description": "Registro rigoroso delle assenze in collegio con tap rapido, sincronizzazione cloud ed esportazione in PDF, CSV e database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.65"
+        android:scaleY="0.65"
+        android:translateX="18.9"
+        android:translateY="18.9">
+        <!-- Shield / Crest Background -->
+        <path
+            android:fillColor="#1E293B"
+            android:pathData="M54,12 L86,24 C86,54 70,78 54,92 C38,78 22,54 22,24 Z" />
+        <path
+            android:strokeColor="#F59E0B"
+            android:strokeWidth="3.5"
+            android:fillColor="#00000000"
+            android:pathData="M54,12 L86,24 C86,54 70,78 54,92 C38,78 22,54 22,24 Z" />
+
+        <!-- Academic Pediment / Temple roof -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,28 L35,38 L73,38 Z" />
+        <!-- Entablature bar -->
+        <path
+            android:fillColor="#F59E0B"
+            android:pathData="M34,39 H74 V42 H34 Z" />
+        <!-- Columns -->
+        <path
+            android:fillColor="#E2E8F0"
+            android:pathData="M38,44 H42 V64 H38 Z M46,44 H50 V64 H46 Z M58,44 H62 V64 H58 Z M66,44 H70 V64 H66 Z" />
+        <!-- Base -->
+        <path
+            android:fillColor="#F59E0B"
+            android:pathData="M34,64 H74 V68 H34 Z" />
+
+        <!-- Verification Seal / Checkmark badge -->
+        <path
+            android:fillColor="#10B981"
+            android:pathData="M54,58 C62.8,58 70,65.2 70,74 C70,82.8 62.8,90 54,90 C45.2,90 38,82.8 38,74 C38,65.2 45.2,58 54,58 Z" />
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000"
+            android:pathData="M46,74 L52,80 L63,68" />
+    </group>
+</vector>
