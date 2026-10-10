@@ -74,6 +74,7 @@ fun HistoryLedgerScreen(
     modifier: Modifier = Modifier
 ) {
     val allAbsences by viewModel.allAbsences.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilterType by remember { mutableStateOf<String?>(null) }
@@ -83,6 +84,11 @@ fun HistoryLedgerScreen(
     var inspectedRecord by remember { mutableStateOf<AbsenceRecord?>(null) }
     var recordToModify by remember { mutableStateOf<AbsenceRecord?>(null) }
     var recordToDelete by remember { mutableStateOf<AbsenceRecord?>(null) }
+
+    // Security PIN dialog states
+    var showPinForDelete by remember { mutableStateOf<AbsenceRecord?>(null) }
+    var showPinForDayRemove by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    var showPinForExplode by remember { mutableStateOf<Long?>(null) }
 
     val filteredAbsences = remember(allAbsences, searchQuery, selectedFilterType, onlyJustified) {
         allAbsences.filter { record ->
@@ -214,7 +220,11 @@ fun HistoryLedgerScreen(
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { dismissValue ->
                             if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
-                                recordToDelete = record
+                                if (settings.isSecurityLockEnabled) {
+                                    showPinForDelete = record
+                                } else {
+                                    recordToDelete = record
+                                }
                                 false // Keep item visible until confirmed in dialog
                             } else {
                                 false
@@ -310,7 +320,11 @@ fun HistoryLedgerScreen(
                             onClick = {
                                 val targetId = record.id
                                 inspectedRecord = null
-                                viewModel.explodeInterval(targetId)
+                                if (settings.isSecurityLockEnabled) {
+                                    showPinForExplode = targetId
+                                } else {
+                                    viewModel.explodeInterval(targetId)
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
@@ -353,8 +367,12 @@ fun HistoryLedgerScreen(
                                     )
                                     IconButton(
                                         onClick = {
-                                            viewModel.removeSingleDayFromInterval(record.id, dayMillis) {
-                                                inspectedRecord = null
+                                            if (settings.isSecurityLockEnabled) {
+                                                showPinForDayRemove = Pair(record.id, dayMillis)
+                                            } else {
+                                                viewModel.removeSingleDayFromInterval(record.id, dayMillis) {
+                                                    inspectedRecord = null
+                                                }
                                             }
                                         },
                                         modifier = Modifier.size(24.dp)
@@ -395,7 +413,11 @@ fun HistoryLedgerScreen(
                         onClick = {
                             val target = inspectedRecord
                             inspectedRecord = null
-                            recordToDelete = target
+                            if (settings.isSecurityLockEnabled) {
+                                showPinForDelete = target
+                            } else {
+                                recordToDelete = target
+                            }
                         },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
@@ -583,6 +605,51 @@ fun HistoryLedgerScreen(
             dismissButton = {
                 TextButton(onClick = { recordToDelete = null }) {
                     Text("Annulla")
+                }
+            }
+        )
+    }
+
+    // SECURITY PIN DIALOG FOR DELETION
+    showPinForDelete?.let { record ->
+        SecurityPinDialog(
+            title = "Autenticazione Richiesta",
+            description = "Inserisci il PIN per confermare l'eliminazione dell'assenza (${record.formattedShortDate}).",
+            onDismiss = { showPinForDelete = null },
+            onVerifyPin = { viewModel.verifySecurityPin(it) },
+            onSuccess = {
+                val targetId = record.id
+                showPinForDelete = null
+                viewModel.deleteAbsence(targetId) {}
+            }
+        )
+    }
+
+    // SECURITY PIN DIALOG FOR EXPLODING INTERVAL
+    showPinForExplode?.let { recordId ->
+        SecurityPinDialog(
+            title = "Autenticazione Richiesta",
+            description = "Inserisci il PIN per suddividere l'intervallo in singole date.",
+            onDismiss = { showPinForExplode = null },
+            onVerifyPin = { viewModel.verifySecurityPin(it) },
+            onSuccess = {
+                showPinForExplode = null
+                viewModel.explodeInterval(recordId)
+            }
+        )
+    }
+
+    // SECURITY PIN DIALOG FOR REMOVING SINGLE DAY FROM INTERVAL
+    showPinForDayRemove?.let { (recordId, dayMillis) ->
+        SecurityPinDialog(
+            title = "Autenticazione Richiesta",
+            description = "Inserisci il PIN per rimuovere ${DateUtil.formatShortDate(dayMillis)} dall'intervallo.",
+            onDismiss = { showPinForDayRemove = null },
+            onVerifyPin = { viewModel.verifySecurityPin(it) },
+            onSuccess = {
+                showPinForDayRemove = null
+                viewModel.removeSingleDayFromInterval(recordId, dayMillis) {
+                    inspectedRecord = null
                 }
             }
         )

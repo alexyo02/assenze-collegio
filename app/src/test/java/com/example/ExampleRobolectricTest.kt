@@ -78,4 +78,28 @@ class ExampleRobolectricTest {
     }.timeInMillis
     assertFalse("15 October is a useful day", CivilHolidaysUtil.isExcludedDay(october15))
   }
+
+  @Test
+  fun `verify package name and version 2_0_0 bump`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    assertEquals("com.assenzecollegio.adisu", context.packageName)
+    assertEquals("2.0.0", BuildConfig.VERSION_NAME)
+    assertEquals(2, BuildConfig.VERSION_CODE)
+  }
+
+  @Test
+  fun `verify security lock and PIN settings`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val config = com.example.data.CollegeConfig(context)
+    val settings = config.settingsFlow.value
+
+    assertEquals("1234", settings.securityPin)
+    assertFalse(settings.isSecurityLockEnabled)
+
+    config.setSecurityLockEnabled(true)
+    assertTrue(config.settingsFlow.value.isSecurityLockEnabled)
+
+    config.setSecurityPin("5678")
+    assertEquals("5678", config.settingsFlow.value.securityPin)
+  }
 }

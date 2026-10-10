@@ -157,7 +157,7 @@ fun StatsScreen(
                             value = "${residencyStats.totalAbsencesCount} gg"
                         )
                         CleanMetric(
-                            title = "Giorni Rimanenti",
+                            title = "Assenze Disponibili",
                             value = "${residencyStats.remainingAbsencesBefore56} gg",
                             highlight = residencyStats.remainingAbsencesBefore56 <= 15
                         )

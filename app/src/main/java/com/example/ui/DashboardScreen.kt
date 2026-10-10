@@ -187,7 +187,7 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "${residencyStats.remainingAbsencesBefore56} giorni disponibili",
+                            text = "${residencyStats.remainingAbsencesBefore56} assenze disponibili",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary

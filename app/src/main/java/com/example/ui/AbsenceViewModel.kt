@@ -24,7 +24,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import kotlin.math.ceil
 
 class AbsenceViewModel(application: Application) : AndroidViewModel(application) {
@@ -532,4 +536,143 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
         config.updateSettings(newSettings)
         _snackbarMessage.value = "Impostazioni aggiornate."
     }
+
+    // --- AUTOMATIC MONTHLY BACKUP SYSTEM ---
+    private val _monthlyBackups = MutableStateFlow<List<MonthlyBackupItem>>(emptyList())
+    val monthlyBackups: StateFlow<List<MonthlyBackupItem>> = _monthlyBackups.asStateFlow()
+
+    init {
+        checkAndPerformMonthlyBackup()
+        loadMonthlyBackups()
+    }
+
+    fun loadMonthlyBackups() {
+        val app = getApplication<Application>()
+        val dir = File(app.filesDir, "monthly_backups")
+        if (!dir.exists()) {
+            _monthlyBackups.value = emptyList()
+            return
+        }
+        val files = dir.listFiles { f -> f.extension == "json" }?.sortedByDescending { it.lastModified() } ?: emptyList()
+        val items = files.mapNotNull { file ->
+            try {
+                val payload = file.inputStream().use { ExportManager.importDatabaseJson(it) }
+                val monthKey = file.nameWithoutExtension.removePrefix("auto_backup_")
+                MonthlyBackupItem(
+                    monthKey = monthKey,
+                    displayTitle = formatMonthTitle(monthKey),
+                    timestamp = file.lastModified(),
+                    recordCount = payload?.records?.size ?: 0,
+                    file = file
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
+        _monthlyBackups.value = items
+    }
+
+    private fun formatMonthTitle(key: String): String {
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM", Locale.ITALIAN)
+            val date = sdf.parse(key) ?: Date()
+            SimpleDateFormat("MMMM yyyy", Locale.ITALIAN).format(date).replaceFirstChar { it.uppercase() }
+        } catch (_: Exception) {
+            key
+        }
+    }
+
+    fun checkAndPerformMonthlyBackup() {
+        viewModelScope.launch {
+            if (!settings.value.autoMonthlyBackupEnabled) return@launch
+            val currentMonthKey = SimpleDateFormat("yyyy-MM", Locale.ITALIAN).format(Date())
+            val lastMonthKey = settings.value.lastMonthlyBackupMonth
+            if (currentMonthKey != lastMonthKey) {
+                performMonthlyBackup(currentMonthKey)
+            }
+        }
+    }
+
+    fun performMonthlyBackupNow() {
+        viewModelScope.launch {
+            val currentMonthKey = SimpleDateFormat("yyyy-MM", Locale.ITALIAN).format(Date())
+            performMonthlyBackup(currentMonthKey)
+            _snackbarMessage.value = "Backup mensile salvato."
+        }
+    }
+
+    private suspend fun performMonthlyBackup(monthKey: String) {
+        try {
+            val records = repository.getAllRecordsDirect()
+            val logs = repository.getAllAuditLogsDirect()
+            val app = getApplication<Application>()
+            val dir = File(app.filesDir, "monthly_backups").apply { mkdirs() }
+            val file = File(dir, "auto_backup_$monthKey.json")
+            FileOutputStream(file).use { out ->
+                ExportManager.writeJsonToStream(settings.value, records, logs, out)
+            }
+            config.setLastMonthlyBackupMonth(monthKey)
+            loadMonthlyBackups()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun restoreMonthlyBackup(item: MonthlyBackupItem, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val payload = item.file.inputStream().use { ExportManager.importDatabaseJson(it) }
+                if (payload != null) {
+                    repository.restoreDatabase(payload.records, payload.auditLogs, clearExisting = true)
+                    config.updateSettings(
+                        settings.value.copy(
+                            studentName = payload.studentName,
+                            collegeName = payload.collegeName,
+                            roomNumber = payload.roomNumber,
+                            academicYear = payload.academicYear,
+                            academicYearStartDate = payload.academicYearStartDate
+                        )
+                    )
+                    _snackbarMessage.value = "Ripristinato backup di ${item.displayTitle} (${payload.records.size} voci)."
+                    onResult(true)
+                } else {
+                    _snackbarMessage.value = "File di backup non valido."
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                _snackbarMessage.value = "Errore durante il ripristino: ${e.localizedMessage}"
+                onResult(false)
+            }
+        }
+    }
+
+    // --- SECURITY LOCK & AUTHENTICATION (PIN) ---
+    fun verifySecurityPin(enteredPin: String): Boolean {
+        return enteredPin == settings.value.securityPin
+    }
+
+    fun setSecurityLockEnabled(enabled: Boolean) {
+        config.setSecurityLockEnabled(enabled)
+        _snackbarMessage.value = if (enabled) "Lucchetto di sicurezza ATTIVATO 🔒" else "Lucchetto di sicurezza DISATTIVATO 🔓"
+    }
+
+    fun updateSecurityPin(newPin: String) {
+        if (newPin.length == 4) {
+            config.setSecurityPin(newPin)
+            _snackbarMessage.value = "PIN di sicurezza aggiornato."
+        }
+    }
+
+    fun setAutoMonthlyBackupEnabled(enabled: Boolean) {
+        config.setAutoMonthlyBackupEnabled(enabled)
+        _snackbarMessage.value = if (enabled) "Backup automatico mensile attivato." else "Backup automatico disattivato."
+    }
 }
+
+data class MonthlyBackupItem(
+    val monthKey: String,
+    val displayTitle: String,
+    val timestamp: Long,
+    val recordCount: Int,
+    val file: File
+)

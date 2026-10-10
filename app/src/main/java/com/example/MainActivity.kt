@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -154,6 +155,16 @@ fun MainAppScreen(
                         }
                     },
                     actions = {
+                        if (settings.isSecurityLockEnabled) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Lucchetto Attivo",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(20.dp)
+                            )
+                        }
                         IconButton(onClick = { selectedTabIndex = 3 }) {
                             Icon(
                                 imageVector = Icons.Default.Save,
