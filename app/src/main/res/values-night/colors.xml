@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget Adaptive Colors (Dark Mode) -->
+    <color name="widget_bg_color">#FF1E293B</color>
+    <color name="widget_bg_stroke">#FF334155</color>
+    <color name="widget_title">#FFA78BFA</color>
+    <color name="widget_subtitle">#FF94A3B8</color>
+    <color name="widget_text_primary">#FFF8FAFC</color>
+    <color name="widget_text_secondary">#FF94A3B8</color>
+    <color name="widget_accent">#FFA78BFA</color>
+    <color name="widget_btn_bg">#FF334155</color>
+    <color name="widget_btn_text">#FFE2E8F0</color>
+    <color name="widget_divider">#FF334155</color>
+    <color name="widget_metrics_bg">#FF0F172A</color>
+    <color name="widget_calendar_bg">#FF0F172A</color>
+
+    <!-- Widget Badges (Dark Mode) -->
+    <color name="widget_badge_safe_bg">#FF064E3B</color>
+    <color name="widget_badge_safe_stroke">#FF059669</color>
+    <color name="widget_badge_safe_text">#FF4ADE80</color>
+
+    <color name="widget_badge_warn_bg">#FF78350F</color>
+    <color name="widget_badge_warn_stroke">#FFB45309</color>
+    <color name="widget_badge_warn_text">#FFFBBF24</color>
+
+    <color name="widget_badge_crit_bg">#FF7F1D1D</color>
+    <color name="widget_badge_crit_stroke">#FFB91C1C</color>
+    <color name="widget_badge_crit_text">#FFF87171</color>
+</resources>

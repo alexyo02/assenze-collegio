@@ -7,4 +7,31 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Widget Adaptive Colors (Light Mode) -->
+    <color name="widget_bg_color">#FFFFFFFF</color>
+    <color name="widget_bg_stroke">#FFE2E8F0</color>
+    <color name="widget_title">#FF7C3AED</color>
+    <color name="widget_subtitle">#FF64748B</color>
+    <color name="widget_text_primary">#FF0F172A</color>
+    <color name="widget_text_secondary">#FF64748B</color>
+    <color name="widget_accent">#FF7C3AED</color>
+    <color name="widget_btn_bg">#FFF1F5F9</color>
+    <color name="widget_btn_text">#FF475569</color>
+    <color name="widget_divider">#FFE2E8F0</color>
+    <color name="widget_metrics_bg">#FFF8FAFC</color>
+    <color name="widget_calendar_bg">#FFF8FAFC</color>
+
+    <!-- Widget Badges (Light Mode) -->
+    <color name="widget_badge_safe_bg">#FFDCFCE7</color>
+    <color name="widget_badge_safe_stroke">#FF86EFAC</color>
+    <color name="widget_badge_safe_text">#FF16A34A</color>
+
+    <color name="widget_badge_warn_bg">#FFFEF3C7</color>
+    <color name="widget_badge_warn_stroke">#FFFDE68A</color>
+    <color name="widget_badge_warn_text">#FFD97706</color>
+
+    <color name="widget_badge_crit_bg">#FFFEE2E2</color>
+    <color name="widget_badge_crit_stroke">#FFFCA5A5</color>
+    <color name="widget_badge_crit_text">#FFDC2626</color>
 </resources>

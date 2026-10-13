@@ -307,9 +307,11 @@ class CollegeWidgetProvider : AppWidgetProvider() {
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
 
+            val isDarkTheme = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+
             // Background
             val bgPaint = Paint().apply {
-                color = Color.parseColor("#F8FAFC")
+                color = if (isDarkTheme) Color.parseColor("#0F172A") else Color.parseColor("#F8FAFC")
                 isAntiAlias = true
             }
             canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), 14f, 14f, bgPaint)
@@ -317,7 +319,7 @@ class CollegeWidgetProvider : AppWidgetProvider() {
             // Days of week header
             val daysOfWeek = listOf("L", "M", "M", "G", "V", "S", "D")
             val thPaint = Paint().apply {
-                color = Color.parseColor("#64748B")
+                color = if (isDarkTheme) Color.parseColor("#94A3B8") else Color.parseColor("#64748B")
                 textSize = 20f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 textAlign = Paint.Align.CENTER
@@ -334,7 +336,7 @@ class CollegeWidgetProvider : AppWidgetProvider() {
 
             // Divider under week days
             val linePaint = Paint().apply {
-                color = Color.parseColor("#E2E8F0")
+                color = if (isDarkTheme) Color.parseColor("#334155") else Color.parseColor("#E2E8F0")
                 strokeWidth = 1.5f
             }
             canvas.drawLine(10f, topY + 8f, width - 10f, topY + 8f, linePaint)
@@ -409,18 +411,19 @@ class CollegeWidgetProvider : AppWidgetProvider() {
                         textPaint.color = Color.WHITE
                         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     } else if (isToday) {
-                        circlePaint.color = Color.parseColor("#7C3AED")
+                        val accentColor = if (isDarkTheme) Color.parseColor("#A78BFA") else Color.parseColor("#7C3AED")
+                        circlePaint.color = accentColor
                         circlePaint.style = Paint.Style.STROKE
                         circlePaint.strokeWidth = 2.5f
                         canvas.drawCircle(cx, cy - 2f, 15f, circlePaint)
 
-                        textPaint.color = Color.parseColor("#7C3AED")
+                        textPaint.color = accentColor
                         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     } else if (isExcluded) {
-                        textPaint.color = Color.parseColor("#94A3B8")
+                        textPaint.color = if (isDarkTheme) Color.parseColor("#64748B") else Color.parseColor("#94A3B8")
                         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                     } else {
-                        textPaint.color = Color.parseColor("#1E293B")
+                        textPaint.color = if (isDarkTheme) Color.parseColor("#F8FAFC") else Color.parseColor("#1E293B")
                         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                     }
 
