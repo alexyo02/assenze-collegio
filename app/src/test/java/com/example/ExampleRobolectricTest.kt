@@ -80,26 +80,26 @@ class ExampleRobolectricTest {
   }
 
   @Test
-  fun `verify package name and version 2_0_0 bump`() {
+  fun `verify package name and version 2_1_0 bump`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     assertEquals("com.assenzecollegio.adisu", context.packageName)
-    assertEquals("2.0.0", BuildConfig.VERSION_NAME)
-    assertEquals(2, BuildConfig.VERSION_CODE)
+    assertEquals("2.1.0", BuildConfig.VERSION_NAME)
+    assertEquals(3, BuildConfig.VERSION_CODE)
   }
 
   @Test
-  fun `verify security lock and PIN settings`() {
+  fun `verify security lock and user defined PIN settings`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val config = com.example.data.CollegeConfig(context)
     val settings = config.settingsFlow.value
 
-    assertEquals("1234", settings.securityPin)
+    // No hardcoded PIN: starts empty until user sets it
+    assertEquals("", settings.securityPin)
     assertFalse(settings.isSecurityLockEnabled)
 
+    config.setSecurityPin("5678")
     config.setSecurityLockEnabled(true)
     assertTrue(config.settingsFlow.value.isSecurityLockEnabled)
-
-    config.setSecurityPin("5678")
     assertEquals("5678", config.settingsFlow.value.securityPin)
   }
 

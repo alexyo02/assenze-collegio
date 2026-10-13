@@ -182,19 +182,19 @@ class CollegeWidgetProvider : AppWidgetProvider() {
 
             when (riskLevel) {
                 ResidencyRiskLevel.SAFE -> {
-                    views.setTextViewText(R.id.widget_tv_badge, "Regolare (> 56%)")
-                    views.setInt(R.id.widget_tv_badge, "setBackgroundResource", R.drawable.widget_badge_safe)
-                    views.setTextColor(R.id.widget_tv_badge, Color.parseColor("#16A34A"))
+                    views.setViewVisibility(R.id.widget_tv_badge_safe, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_tv_badge_warn, View.GONE)
+                    views.setViewVisibility(R.id.widget_tv_badge_crit, View.GONE)
                 }
                 ResidencyRiskLevel.WARNING -> {
-                    views.setTextViewText(R.id.widget_tv_badge, "Attenzione")
-                    views.setInt(R.id.widget_tv_badge, "setBackgroundResource", R.drawable.widget_badge_warn)
-                    views.setTextColor(R.id.widget_tv_badge, Color.parseColor("#D97706"))
+                    views.setViewVisibility(R.id.widget_tv_badge_safe, View.GONE)
+                    views.setViewVisibility(R.id.widget_tv_badge_warn, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_tv_badge_crit, View.GONE)
                 }
                 ResidencyRiskLevel.CRITICAL -> {
-                    views.setTextViewText(R.id.widget_tv_badge, "Sotto Soglia")
-                    views.setInt(R.id.widget_tv_badge, "setBackgroundResource", R.drawable.widget_badge_crit)
-                    views.setTextColor(R.id.widget_tv_badge, Color.parseColor("#DC2626"))
+                    views.setViewVisibility(R.id.widget_tv_badge_safe, View.GONE)
+                    views.setViewVisibility(R.id.widget_tv_badge_warn, View.GONE)
+                    views.setViewVisibility(R.id.widget_tv_badge_crit, View.VISIBLE)
                 }
             }
 

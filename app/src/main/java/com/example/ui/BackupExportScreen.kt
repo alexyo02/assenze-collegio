@@ -474,16 +474,26 @@ fun BackupExportScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (settings.isSecurityLockEnabled) "Stato: Attivo 🔒 (Richiede PIN)" else "Stato: Disattivato 🔓",
+                            text = when {
+                                settings.isSecurityLockEnabled -> "Stato: Attivo 🔒 (Richiede PIN)"
+                                settings.securityPin.isNotBlank() -> "Stato: Disattivato 🔓"
+                                else -> "Stato: Nessun PIN impostato"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = if (settings.isSecurityLockEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        if (settings.isSecurityLockEnabled) {
-                            TextButton(onClick = { showChangePinDialog = true }) {
-                                Text("Cambia PIN")
+                        TextButton(
+                            onClick = {
+                                if (settings.securityPin.isBlank()) {
+                                    showSetInitialPinDialog = true
+                                } else {
+                                    showChangePinDialog = true
+                                }
                             }
+                        ) {
+                            Text(if (settings.securityPin.isBlank()) "Imposta PIN" else "Cambia PIN")
                         }
                     }
                 }
@@ -584,7 +594,7 @@ fun BackupExportScreen(
 
                     CleanSettingsRow("Versione", "v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})")
                     CleanSettingsRow("ID Pacchetto", BuildConfig.APPLICATION_ID)
-                    CleanSettingsRow("Stato Versione", "Aggiornata (Version Control Attivo)")
+                    CleanSettingsRow("Stato", "Aggiornata")
                 }
             }
         }
@@ -620,21 +630,53 @@ fun BackupExportScreen(
 
     // SET INITIAL PIN OR ENABLE LOCK
     if (showSetInitialPinDialog) {
-        var newPin by remember { mutableStateOf(settings.securityPin) }
+        var chosenPin by remember { mutableStateOf("") }
+        var confirmPin by remember { mutableStateOf("") }
+        var isMismatch by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { showSetInitialPinDialog = false },
             icon = { Icon(Icons.Default.Lock, contentDescription = "Lucchetto", tint = MaterialTheme.colorScheme.primary) },
-            title = { Text("Attiva Lucchetto di Sicurezza", fontWeight = FontWeight.Bold) },
+            title = { Text("Crea il tuo PIN di Sicurezza", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Imposta o conferma il PIN a 4 cifre per proteggere data inizio, camera e cancellazioni.")
+                    Text(
+                        text = "Scegli un PIN personale a 4 cifre per proteggere la data di decorrenza, la stanza e la cancellazione delle assenze.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     OutlinedTextField(
-                        value = newPin,
-                        onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) newPin = it },
-                        label = { Text("PIN (4 cifre)") },
+                        value = chosenPin,
+                        onValueChange = {
+                            if (it.length <= 4 && it.all { c -> c.isDigit() }) {
+                                chosenPin = it
+                                isMismatch = false
+                            }
+                        },
+                        label = { Text("Nuovo PIN (4 cifre)") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = {
+                            if (it.length <= 4 && it.all { c -> c.isDigit() }) {
+                                confirmPin = it
+                                isMismatch = false
+                            }
+                        },
+                        label = { Text("Conferma PIN") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = isMismatch,
+                        supportingText = {
+                            if (isMismatch) {
+                                Text("I due PIN non coincidono", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -642,15 +684,17 @@ fun BackupExportScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newPin.length == 4) {
-                            viewModel.updateSecurityPin(newPin)
+                        if (chosenPin == confirmPin && chosenPin.length == 4) {
+                            viewModel.updateSecurityPin(chosenPin)
                             viewModel.setSecurityLockEnabled(true)
                             showSetInitialPinDialog = false
+                        } else {
+                            isMismatch = true
                         }
                     },
-                    enabled = newPin.length == 4
+                    enabled = chosenPin.length == 4 && confirmPin.length == 4
                 ) {
-                    Text("Attiva")
+                    Text("Salva e Attiva")
                 }
             },
             dismissButton = {
