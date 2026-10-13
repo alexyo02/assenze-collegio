@@ -114,4 +114,39 @@ class ExampleRobolectricTest {
     com.example.widget.CollegeWidgetProvider.setWidgetExpanded(context, testWidgetId, false)
     assertFalse(com.example.widget.CollegeWidgetProvider.isWidgetExpanded(context, testWidgetId))
   }
+
+  @Test
+  fun `verify calendar bitmap generation`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val bitmap = com.example.widget.CollegeWidgetProvider.generateMonthCalendarBitmap(
+      context = context,
+      year = 2026,
+      month = 9, // October
+      records = emptyList()
+    )
+    assertTrue("Bitmap width should be valid", bitmap.width > 0)
+    assertTrue("Bitmap height should be valid", bitmap.height > 0)
+  }
+
+  @Test
+  fun `verify widget layouts can inflate without errors`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val viewsAbsence = android.widget.RemoteViews(context.packageName, R.layout.widget_college_absence)
+    val inflatedAbsence = viewsAbsence.apply(context, null)
+    org.junit.Assert.assertNotNull(inflatedAbsence)
+
+    val views4x1 = android.widget.RemoteViews(context.packageName, R.layout.widget_college_4x1)
+    val inflated4x1 = views4x1.apply(context, null)
+    org.junit.Assert.assertNotNull(inflated4x1)
+  }
+
+  @Test
+  fun `verify widget providers update without throwing`() = kotlinx.coroutines.runBlocking {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+    val testId = 101
+
+    com.example.widget.CollegeWidgetProvider.updateWidget(context, appWidgetManager, testId)
+    com.example.widget.CollegeWidgetCompactProvider.updateCompactWidget(context, appWidgetManager, testId)
+  }
 }

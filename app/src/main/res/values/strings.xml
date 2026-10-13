@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Assenze Collegio</string>
-    <string name="widget_name">Widget Assenze Collegio</string>
+    <string name="widget_name">Assenze Collegio (Dashboard)</string>
+    <string name="widget_compact_name">Assenze Collegio (4x1)</string>
     <string name="widget_description">Visualizza il contatore delle presenze, le assenze residue e il calendario mensile.</string>
+    <string name="widget_compact_description">Contatore compatto percentuale e giorni residui (4x1).</string>
 </resources>
