@@ -102,4 +102,16 @@ class ExampleRobolectricTest {
     config.setSecurityPin("5678")
     assertEquals("5678", config.settingsFlow.value.securityPin)
   }
+
+  @Test
+  fun `verify widget expansion state persistence`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val testWidgetId = 42
+
+    assertFalse(com.example.widget.CollegeWidgetProvider.isWidgetExpanded(context, testWidgetId))
+    com.example.widget.CollegeWidgetProvider.setWidgetExpanded(context, testWidgetId, true)
+    assertTrue(com.example.widget.CollegeWidgetProvider.isWidgetExpanded(context, testWidgetId))
+    com.example.widget.CollegeWidgetProvider.setWidgetExpanded(context, testWidgetId, false)
+    assertFalse(com.example.widget.CollegeWidgetProvider.isWidgetExpanded(context, testWidgetId))
+  }
 }

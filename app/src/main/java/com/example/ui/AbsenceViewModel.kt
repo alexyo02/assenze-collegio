@@ -16,6 +16,7 @@ import com.example.export.ExportManager
 import com.example.util.CivilHolidaysUtil
 import com.example.util.DateUtil
 import com.example.util.HapticUtil
+import com.example.widget.CollegeWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -310,6 +311,8 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
                 _medicalCertificateNote.value = ""
                 _isRangeSelectionMode.value = false
 
+                CollegeWidgetProvider.updateAllWidgets(app)
+
                 if (record.isRange) {
                     _snackbarMessage.value = "Intervallo registrato: ${record.formattedShortDate}"
                 } else {
@@ -342,6 +345,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
                 medicalCertificateNote = medicalNote
             )
             if (success) {
+                CollegeWidgetProvider.updateAllWidgets(getApplication())
                 _snackbarMessage.value = "Assenza aggiornata."
                 onSuccess()
             }
@@ -355,6 +359,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val success = repository.explodeInterval(recordId)
             if (success) {
+                CollegeWidgetProvider.updateAllWidgets(getApplication())
                 _snackbarMessage.value = "Intervallo suddiviso in date singole."
                 onSuccess()
             }
@@ -368,6 +373,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val success = repository.removeSingleDayFromInterval(recordId, dayMillis)
             if (success) {
+                CollegeWidgetProvider.updateAllWidgets(getApplication())
                 _snackbarMessage.value = "Giorno rimosso dall'intervallo."
                 onSuccess()
             }
@@ -378,6 +384,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val success = repository.deleteAbsence(recordId)
             if (success) {
+                CollegeWidgetProvider.updateAllWidgets(getApplication())
                 _snackbarMessage.value = "Assenza eliminata."
                 onSuccess()
             }
@@ -524,6 +531,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
                     )
                 )
 
+                CollegeWidgetProvider.updateAllWidgets(getApplication())
                 _snackbarMessage.value = "Archivio ripristinato: ${payload.records.size} voci importate."
                 onResult(true, "Ripristinate ${payload.records.size} voci.")
             } catch (e: Exception) {
@@ -534,6 +542,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
 
     fun saveSettings(newSettings: CollegeSettings) {
         config.updateSettings(newSettings)
+        CollegeWidgetProvider.updateAllWidgets(getApplication())
         _snackbarMessage.value = "Impostazioni aggiornate."
     }
 
@@ -633,6 +642,7 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
                             academicYearStartDate = payload.academicYearStartDate
                         )
                     )
+                    CollegeWidgetProvider.updateAllWidgets(getApplication())
                     _snackbarMessage.value = "Ripristinato backup di ${item.displayTitle} (${payload.records.size} voci)."
                     onResult(true)
                 } else {

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Assenze Collegio</string>
+    <string name="widget_name">Widget Assenze Collegio</string>
+    <string name="widget_description">Visualizza il contatore delle presenze, le assenze residue e il calendario mensile.</string>
 </resources>

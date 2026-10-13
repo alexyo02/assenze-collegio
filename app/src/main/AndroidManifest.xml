@@ -36,6 +36,20 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- WIDGET RECEIVER -->
+        <receiver
+            android:name=".widget.CollegeWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.assenzecollegio.adisu.widget.ACTION_TOGGLE_EXPAND" />
+                <action android:name="com.assenzecollegio.adisu.widget.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/college_widget_info" />
+        </receiver>
     </application>
 
 </manifest>
