@@ -167,7 +167,7 @@ class CollegeWidgetProvider : AppWidgetProvider() {
                 }
             }
 
-            val totalAbsences = distinctEffectiveAbsenceDays.size
+            val totalAbsences = com.example.formeit.HybridAbsences.effectiveUnjustified(context, distinctEffectiveAbsenceDays.size)
             val remainingBefore56 = (maxAllowedAbsences - totalAbsences).coerceAtLeast(0)
             val projectedPresence = ((totalUsefulDays - totalAbsences).toDouble() / totalUsefulDays.toDouble()) * 100.0
 

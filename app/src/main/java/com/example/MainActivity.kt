@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.History
@@ -39,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,12 +58,17 @@ import com.example.ui.DashboardScreen
 import com.example.ui.HistoryLedgerScreen
 import com.example.ui.StatsScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.formeit.FormeitViewModel
+import com.example.ui.formeit.ResidenzaScreen
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 
 enum class AppNavTab(val title: String, val icon: ImageVector) {
     DASHBOARD("Assenze", Icons.Default.CalendarToday),
     LEDGER("Registro", Icons.Default.History),
     STATS("Statistiche", Icons.Default.Assessment),
-    BACKUP("Backup & Dati", Icons.Default.Save)
+    RESIDENZA("Residenza", Icons.Default.Apartment),
+    BACKUP("Backup", Icons.Default.Save)
 }
 
 class MainActivity : ComponentActivity() {
@@ -79,9 +86,11 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(
-    viewModel: AbsenceViewModel = viewModel()
+    viewModel: AbsenceViewModel = viewModel(),
+    formeit: FormeitViewModel = viewModel()
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var residenzaDeepLink by remember { mutableStateOf<com.example.ui.formeit.ResidenzaPage?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarMessage by viewModel.snackbarMessage.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -95,6 +104,17 @@ fun MainAppScreen(
             viewModel.clearSnackbar()
         }
     }
+
+    // FormeIt: messages from remote actions, and silent refresh when the app returns to foreground.
+    val formeitMessage by formeit.message.collectAsStateWithLifecycle()
+    val formeitSession by formeit.session.collectAsStateWithLifecycle()
+    LaunchedEffect(formeitMessage) {
+        formeitMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            formeit.clearMessage()
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { formeit.refreshIfStale() }
 
     // Handle back button when not on dashboard
     BackHandler(enabled = selectedTabIndex != 0) {
@@ -132,12 +152,14 @@ fun MainAppScreen(
                     title = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Assenze Collegio",
+                                text = "Assenze Collegio β",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Text(
-                                text = "${settings.studentName} • ${settings.collegeName}",
+                                text = formeitSession?.profile?.let { p ->
+                                    listOf(p.displayName, p.stanza).filter { it.isNotBlank() }.joinToString(" • ")
+                                } ?: "${settings.studentName} • ${settings.collegeName}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
@@ -165,7 +187,7 @@ fun MainAppScreen(
                                     .size(20.dp)
                             )
                         }
-                        IconButton(onClick = { selectedTabIndex = 3 }) {
+                        IconButton(onClick = { selectedTabIndex = AppNavTab.BACKUP.ordinal }) {
                             Icon(
                                 imageVector = Icons.Default.Save,
                                 contentDescription = "Backup & Dati",
@@ -199,14 +221,25 @@ fun MainAppScreen(
                     .padding(innerPadding)
             ) {
                 when (selectedTabIndex) {
-                    0 -> DashboardScreen(
+                    AppNavTab.DASHBOARD.ordinal -> DashboardScreen(
                         viewModel = viewModel,
-                        onNavigateToHistory = { selectedTabIndex = 1 },
-                        onNavigateToBackup = { selectedTabIndex = 3 }
+                        formeit = formeit,
+                        onOpenOfficialHistory = {
+                            residenzaDeepLink = com.example.ui.formeit.ResidenzaPage.STORICO
+                            selectedTabIndex = AppNavTab.RESIDENZA.ordinal
+                        },
+                        onNavigateToHistory = { selectedTabIndex = AppNavTab.LEDGER.ordinal },
+                        onNavigateToBackup = { selectedTabIndex = AppNavTab.BACKUP.ordinal }
                     )
-                    1 -> HistoryLedgerScreen(viewModel = viewModel)
-                    2 -> StatsScreen(viewModel = viewModel)
-                    3 -> BackupExportScreen(viewModel = viewModel)
+                    AppNavTab.LEDGER.ordinal -> HistoryLedgerScreen(viewModel = viewModel)
+                    AppNavTab.STATS.ordinal -> StatsScreen(viewModel = viewModel)
+                    AppNavTab.RESIDENZA.ordinal -> ResidenzaScreen(
+                        formeit = formeit,
+                        absences = viewModel,
+                        initialPage = residenzaDeepLink,
+                        onInitialPageConsumed = { residenzaDeepLink = null }
+                    )
+                    AppNavTab.BACKUP.ordinal -> BackupExportScreen(viewModel = viewModel)
                 }
             }
         }

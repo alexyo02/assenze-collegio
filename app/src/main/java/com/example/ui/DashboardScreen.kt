@@ -70,6 +70,8 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(
     viewModel: AbsenceViewModel,
+    formeit: com.example.formeit.FormeitViewModel,
+    onOpenOfficialHistory: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToBackup: () -> Unit,
     modifier: Modifier = Modifier
@@ -103,6 +105,18 @@ fun DashboardScreen(
         contentPadding = PaddingValues(top = 10.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // OFFICIAL FORMEIT DATA (hybrid mode)
+        item {
+            val comparison by viewModel.hybridComparison.collectAsStateWithLifecycle()
+            com.example.ui.formeit.OfficialStatusCard(
+                formeit = formeit,
+                comparison = comparison,
+                lastAbsenceInLedger = { day -> allAbsences.any { it.containsDate(day) } },
+                onAddLastAbsence = { day -> viewModel.addOfficialAbsenceToLedger(day) },
+                onOpenHistory = onOpenOfficialHistory
+            )
+        }
+
         // ESSENTIAL HERO CARD: PERMANENZA REGOLAMENTARE (> 56%)
         item {
             Card(
@@ -181,7 +195,7 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "${residencyStats.totalAbsencesCount} assenze registrate",
+                            text = if (residencyStats.isOfficialDriven) "${residencyStats.totalAbsencesCount} assenze (dato FormeIt)" else "${residencyStats.totalAbsencesCount} assenze registrate",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer

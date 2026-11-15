@@ -36,5 +36,12 @@ data class ResidencyStats(
     val currentAbsencePercentageOnTotal: Double,
     val currentPresencePercentageOnElapsed: Double,
     val projectedAnnualPresencePercentage: Double,
-    val riskLevel: ResidencyRiskLevel
-)
+    val riskLevel: ResidencyRiskLevel,
+    /** Unjustified days in the local ledger only. */
+    val localUnjustifiedCount: Int = totalAbsencesCount,
+    /** Official FormeIt yearly unjustified counter, when a session is available. */
+    val officialUnjustifiedCount: Int? = null
+) {
+    /** True when the official counter is higher than the ledger and drives the statistics. */
+    val isOfficialDriven: Boolean get() = (officialUnjustifiedCount ?: -1) > localUnjustifiedCount
+}

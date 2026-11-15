@@ -3,9 +3,13 @@
     <cloud-backup>
         <include domain="database" path="." />
         <include domain="sharedpref" path="." />
+        <exclude domain="sharedpref" path="formeit_secure.xml" />
+        <exclude domain="sharedpref" path="formeit_cache.xml" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="." />
         <include domain="sharedpref" path="." />
+        <exclude domain="sharedpref" path="formeit_secure.xml" />
+        <exclude domain="sharedpref" path="formeit_cache.xml" />
     </device-transfer>
 </data-extraction-rules>

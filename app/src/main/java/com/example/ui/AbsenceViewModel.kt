@@ -13,6 +13,8 @@ import com.example.data.CollegeSettings
 import com.example.data.ResidencyRiskLevel
 import com.example.data.ResidencyStats
 import com.example.export.ExportManager
+import com.example.formeit.FormeitRepository
+import com.example.formeit.HybridAbsences
 import com.example.util.CivilHolidaysUtil
 import com.example.util.DateUtil
 import com.example.util.HapticUtil
@@ -21,7 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -93,11 +97,94 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
 
     // Regulatory residence computation (> 56% annual requirement)
     // CRITICAL: Medical certified absences DO NOT count against the student!
-    val residencyStats: StateFlow<ResidencyStats> = combine(allAbsences, settings) { records, set ->
-        computeResidencyStats(records, set)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), computeResidencyStats(emptyList(), settings.value))
+    // Hybrid mode: official FormeIt counters are the floor for unjustified absences.
+    private val formeit = FormeitRepository.get(application)
 
-    private fun computeResidencyStats(records: List<AbsenceRecord>, set: CollegeSettings): ResidencyStats {
+    val residencyStats: StateFlow<ResidencyStats> = combine(allAbsences, settings, formeit.session) { records, set, session ->
+        computeResidencyStats(records, set, session?.profile?.assenzeIngiustificateAnno)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), computeResidencyStats(emptyList(), settings.value, formeit.session.value?.profile?.assenzeIngiustificateAnno))
+
+    /** Local ledger vs official counters (null until a FormeIt session exists). */
+    val hybridComparison: StateFlow<HybridAbsences.Comparison?> = combine(allAbsences, residencyStats, formeit.session) { records, stats, session ->
+        val p = session?.profile ?: return@combine null
+        if (!p.hasPresenceData) return@combine null
+        val (monthUnjust, monthJust) = countCurrentMonth(records)
+        HybridAbsences.Comparison(
+            localUnjustifiedYear = stats.localUnjustifiedCount,
+            officialUnjustifiedYear = p.assenzeIngiustificateAnno,
+            localUnjustifiedMonth = monthUnjust,
+            officialUnjustifiedMonth = p.assenzeIngiustificateMese,
+            localJustifiedMonth = monthJust,
+            officialJustifiedMonth = p.assenzeGiustificateMese
+        )
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Distinct (unjustified, justified) local absence days in the current calendar month. */
+    private fun countCurrentMonth(records: List<AbsenceRecord>): Pair<Int, Int> {
+        val monthStart = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val monthEnd = (monthStart.clone() as Calendar).apply { add(Calendar.MONTH, 1); add(Calendar.MILLISECOND, -1) }
+        val unjust = mutableSetOf<Long>()
+        val just = mutableSetOf<Long>()
+        for (record in records) {
+            val cal = Calendar.getInstance().apply { timeInMillis = record.dateMillis }
+            while (cal.timeInMillis <= record.endDateMillis) {
+                val day = cal.timeInMillis
+                if (day in monthStart.timeInMillis..monthEnd.timeInMillis) {
+                    // FormeIt reports nights on civil holidays / closure periods as "giustificate"
+                    // (not computed, Regolamento art. 11 c.2): classify local days the same way.
+                    if (record.isJustified || CivilHolidaysUtil.isExcludedDay(day)) just.add(day) else unjust.add(day)
+                }
+                cal.add(Calendar.DAY_OF_MONTH, 1)
+            }
+        }
+        return unjust.size to just.size
+    }
+
+    /** Imports reconstructed official absence days that are missing from the local ledger. */
+    fun importOfficialDays(days: List<com.example.formeit.OfficialAbsenceDay>) {
+        viewModelScope.launch {
+            var added = 0
+            for (d in days.sortedBy { it.dayMillis }) {
+                val day = DateUtil.getStartOfDay(d.dayMillis)
+                if (allAbsences.value.any { it.containsDate(day) } || repository.getAllRecordsDirect().any { it.containsDate(day) }) continue
+                repository.registerAbsence(
+                    startDateMillis = day,
+                    endDateMillis = day,
+                    absenceType = AbsenceTypes.NIGHT_OUT,
+                    reason = "Importata da FormeIt" + if (d.certainty == com.example.formeit.Certainty.INFERRED) " (dedotta)" else "",
+                    // Only a real justification (not a holiday, which the stats already exclude) is marked justified.
+                    isJustified = d.justified == true && d.excludedReason == null
+                )
+                added++
+            }
+            CollegeWidgetProvider.updateAllWidgets(getApplication())
+            _snackbarMessage.value = if (added == 0) "Nessuna nuova assenza da importare." else "$added assenze ufficiali aggiunte al registro."
+        }
+    }
+
+    /** Adds the official "last absence" day to the local ledger (hybrid mode quick fix). */
+    fun addOfficialAbsenceToLedger(dayMillis: Long) {
+        val day = DateUtil.getStartOfDay(dayMillis)
+        if (allAbsences.value.any { it.containsDate(day) }) {
+            _snackbarMessage.value = "Il giorno è già nel registro."
+            return
+        }
+        viewModelScope.launch {
+            repository.registerAbsence(
+                startDateMillis = day,
+                endDateMillis = day,
+                absenceType = AbsenceTypes.NIGHT_OUT,
+                reason = "Importata da FormeIt (ultima assenza ufficiale)"
+            )
+            CollegeWidgetProvider.updateAllWidgets(getApplication())
+            _snackbarMessage.value = "Assenza ufficiale del ${DateUtil.formatShortDate(day)} aggiunta al registro."
+        }
+    }
+
+    private fun computeResidencyStats(records: List<AbsenceRecord>, set: CollegeSettings, officialUnjustified: Int? = null): ResidencyStats {
         val start = set.academicYearStartDate
         val end = set.academicYearEndDate
 
@@ -128,7 +215,8 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
-        val totalAbsences = distinctEffectiveAbsenceDays.size
+        val localAbsences = distinctEffectiveAbsenceDays.size
+        val totalAbsences = maxOf(localAbsences, officialUnjustified ?: 0)
         val justifiedCount = distinctJustifiedDays.size
 
         val remainingAbsencesBefore56 = (maxAllowedAbsences - totalAbsences).coerceAtLeast(0)
@@ -161,7 +249,9 @@ class AbsenceViewModel(application: Application) : AndroidViewModel(application)
             currentAbsencePercentageOnTotal = absencePctTotal,
             currentPresencePercentageOnElapsed = presencePctElapsed,
             projectedAnnualPresencePercentage = projectedPresence,
-            riskLevel = riskLevel
+            riskLevel = riskLevel,
+            localUnjustifiedCount = localAbsences,
+            officialUnjustifiedCount = officialUnjustified
         )
     }
 

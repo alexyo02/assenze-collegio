@@ -1,5 +1,6 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 import java.util.Base64
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -14,13 +15,23 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.assenzecollegio.adisu"
+    applicationId = "com.assenzecollegio.adisu.beta"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "2.1.0"
+    versionCode = 4
+    versionName = "3.0.0-beta1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // FormeIt service credentials (shared Basic auth embedded in the official app).
+    // Read from local.properties (gitignored) so they never land in the repository.
+    val localProps = Properties().apply {
+      val f = rootProject.file("local.properties")
+      if (f.exists()) f.inputStream().use { load(it) }
+    }
+    fun quoted(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    buildConfigField("String", "FORMEIT_API_USER", quoted(localProps.getProperty("formeit.apiUser", "")))
+    buildConfigField("String", "FORMEIT_API_PASSWORD", quoted(localProps.getProperty("formeit.apiPassword", "")))
   }
 
   // Ensure debug.keystore exists from base64 or user home if exported to Android Studio
@@ -67,6 +78,17 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
     debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    // Optimized build for daily use of the beta: R8 + resource shrinking, not debuggable
+    // (debug builds run Compose unoptimized and miss frames at 120 Hz). Signed with the repo
+    // debug key so it installs over the debug build without uninstalling.
+    create("beta") {
+      initWith(getByName("release"))
+      isMinifyEnabled = true
+      isShrinkResources = true
+      isDebuggable = false
+      signingConfig = signingConfigs.getByName("debugConfig")
+      matchingFallbacks += listOf("release")
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -139,6 +161,7 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
+  implementation(libs.androidx.work.runtime.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
