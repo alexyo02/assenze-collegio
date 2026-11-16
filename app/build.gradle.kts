@@ -18,8 +18,8 @@ android {
     applicationId = "com.assenzecollegio.adisu.beta"
     minSdk = 24
     targetSdk = 36
-    versionCode = 4
-    versionName = "3.0.0-beta1"
+    versionCode = 5
+    versionName = "3.0.0-beta2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
