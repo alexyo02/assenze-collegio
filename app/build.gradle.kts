@@ -30,8 +30,22 @@ android {
       if (f.exists()) f.inputStream().use { load(it) }
     }
     fun quoted(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-    buildConfigField("String", "FORMEIT_API_USER", quoted(localProps.getProperty("formeit.apiUser", "")))
-    buildConfigField("String", "FORMEIT_API_PASSWORD", quoted(localProps.getProperty("formeit.apiPassword", "")))
+    // Fallbacks: Gradle property (-P / ~/.gradle/gradle.properties) or environment variable (CI).
+    fun secret(localKey: String, envKey: String): String =
+      localProps.getProperty(localKey)?.takeIf { it.isNotBlank() }
+        ?: (project.findProperty(envKey) as String?)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(envKey)?.takeIf { it.isNotBlank() }
+        ?: ""
+    val formeitUser = secret("formeit.apiUser", "FORMEIT_API_USER")
+    val formeitPassword = secret("formeit.apiPassword", "FORMEIT_API_PASSWORD")
+    if (formeitUser.isBlank() || formeitPassword.isBlank()) {
+      logger.warn(
+        "WARNING: FormeIt service credentials missing (formeit.apiUser / formeit.apiPassword in local.properties). " +
+          "The app will not be able to log in to FormeIt."
+      )
+    }
+    buildConfigField("String", "FORMEIT_API_USER", quoted(formeitUser))
+    buildConfigField("String", "FORMEIT_API_PASSWORD", quoted(formeitPassword))
   }
 
   // Ensure debug.keystore exists from base64 or user home if exported to Android Studio

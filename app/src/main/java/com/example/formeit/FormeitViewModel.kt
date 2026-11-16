@@ -64,6 +64,7 @@ class FormeitViewModel(application: Application) : AndroidViewModel(application)
 
     /** Silent re-login when the cached data is older than [maxAgeMs] (called at start/resume). */
     fun refreshIfStale(maxAgeMs: Long = 5 * 60_000L) {
+        if (!repo.isConfigured) return
         if (!repo.hasStoredLogin()) { _sync.value = SyncStatus.LOGGED_OUT; return }
         val age = System.currentTimeMillis() - (session.value?.fetchedAtMillis ?: 0L)
         if (age > maxAgeMs) refresh()

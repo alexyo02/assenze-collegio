@@ -96,6 +96,13 @@ fun OfficialStatusCard(
             if (sync == SyncStatus.SYNCING) {
                 Spacer(Modifier.height(12.dp))
                 CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.CenterHorizontally))
+            } else if (!formeit.repo.isConfigured) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Questa build non include le credenziali di servizio FormeIt: il login non è disponibile.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             } else {
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = { showLogin = true }, modifier = Modifier.fillMaxWidth()) {
@@ -112,25 +119,33 @@ fun OfficialStatusCard(
             title = "Dati ufficiali FormeIt",
             subtitle = "Aggiornati: " + if (s.fetchedAtMillis > 0) FormeitDates.formatDateTime(s.fetchedAtMillis) else "—",
             icon = when (sync) {
-                SyncStatus.OFFLINE, SyncStatus.ERROR -> Icons.Default.CloudOff
-                else -> Icons.Default.CloudDone
+                SyncStatus.OFFLINE, SyncStatus.ERROR, SyncStatus.LOGGED_OUT -> Icons.Default.CloudOff
+                else -> if (formeit.repo.isConfigured) Icons.Default.CloudDone else Icons.Default.CloudOff
             }
         ) {
             if (sync == SyncStatus.SYNCING) {
                 CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            } else {
+            } else if (formeit.repo.isConfigured) {
                 IconButton(onClick = { formeit.refresh() }) { Icon(Icons.Default.Refresh, "Aggiorna") }
             }
         }
 
-        if ((sync == SyncStatus.OFFLINE || sync == SyncStatus.ERROR) && syncError != null) {
+        val statusNote: String? = when {
+            !formeit.repo.isConfigured ->
+                "Questa build non include le credenziali di servizio FormeIt: impossibile collegarsi. Dati mostrati dall'ultimo aggiornamento."
+            sync == SyncStatus.OFFLINE -> "Dati in cache (offline). ${syncError.orEmpty()}".trim()
+            sync == SyncStatus.ERROR -> syncError ?: "Aggiornamento non riuscito."
+            sync == SyncStatus.LOGGED_OUT -> syncError ?: "Sessione scaduta: accedi di nuovo per aggiornare i dati."
+            else -> null
+        }
+        if (statusNote != null) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "Dati in cache. $syncError",
+                statusNote,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error
             )
-            if (sync == SyncStatus.ERROR && !formeit.repo.hasStoredLogin()) {
+            if (formeit.repo.isConfigured && (sync == SyncStatus.ERROR || sync == SyncStatus.LOGGED_OUT)) {
                 TextButton(onClick = { showLogin = true }) { Text("Accedi di nuovo") }
             }
         }
