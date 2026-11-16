@@ -102,7 +102,7 @@ fun ResidenzaScreen(
 
     if (session == null) {
         Box(Modifier.fillMaxSize().padding(16.dp)) {
-            OfficialStatusCard(formeit, comparison = null, lastAbsenceInLedger = { true }, onAddLastAbsence = {})
+            OfficialStatusCard(formeit, ledger = emptyList(), onImport = null)
         }
         return
     }
