@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.platform.LocalAutofillManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -53,22 +54,27 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.formeit.FormeitDates
 import com.example.formeit.FormeitViewModel
-import com.example.formeit.HybridAbsences
+import com.example.data.AbsenceRecord
 import com.example.formeit.SyncStatus
 import com.example.util.DateUtil
 
 /**
- * Dashboard card with the official FormeIt presence data (hybrid mode):
- * official counters, last absence / gate transit, and reconciliation with the local ledger.
+ * Dashboard card with the official FormeIt presence data: monthly counters, last absence and
+ * gate transit. FormeIt counters are monthly (plus a calendar-year total), so they are not
+ * compared with the ledger: the card only proposes to add the newly detected absences.
  */
 @Composable
 fun OfficialStatusCard(
     formeit: FormeitViewModel,
-    comparison: HybridAbsences.Comparison?,
-    lastAbsenceInLedger: (Long) -> Boolean,
-    onAddLastAbsence: (Long) -> Unit,
+    ledger: List<AbsenceRecord>,
+    /** Null disables the "add to history" action (e.g. outside the dashboard). */
+    onImport: ((List<ImportChoice>) -> Unit)?,
     onOpenHistory: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val history by formeit.history.collectAsStateWithLifecycle()
+    val ignored by ImportPrefs.ignored(context).collectAsStateWithLifecycle()
+    var showImport by remember { mutableStateOf(false) }
     val monthName = remember {
         java.text.SimpleDateFormat("MMMM", java.util.Locale.ITALIAN).format(java.util.Date()).replaceFirstChar { it.uppercase() }
     }
@@ -172,42 +178,33 @@ fun OfficialStatusCard(
             modifier = Modifier.padding(start = 26.dp)
         )
 
-        if (lastAbs != null && !lastAbsenceInLedger(lastAbs)) {
+        val missing = remember(history, ledger, lastAbs, ignored) {
+            missingFromLedger(history.days, ledger, lastAbs, ignored.orEmpty())
+        }
+        if (onImport != null && missing.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
-            FilledTonalButton(onClick = { onAddLastAbsence(lastAbs) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Aggiungi ${DateUtil.formatShortDate(lastAbs)} al registro locale")
+            FilledTonalButton(onClick = { showImport = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                Text(
+                    if (missing.size == 1) "Aggiungi assenza del ${DateUtil.formatShortDate(missing.first().dayMillis)} allo storico"
+                    else "Aggiungi ${missing.size} assenze allo storico"
+                )
+            }
+            if (showImport) {
+                ImportAbsencesDialog(
+                    days = missing,
+                    onConfirm = { selected, skipped ->
+                        ImportPrefs.ignore(context, skipped.map { it.dayMillis })
+                        onImport(selected)
+                        showImport = false
+                    },
+                    onDismiss = { showImport = false }
+                )
             }
         }
 
         if (onOpenHistory != null) {
             TextButton(onClick = onOpenHistory, modifier = Modifier.align(Alignment.End)) { Text("Storico presenze →") }
-        }
-
-        if (comparison != null && (comparison.monthMismatch || comparison.yearMismatch)) {
-            Spacer(Modifier.height(12.dp))
-            Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFF59E0B).copy(alpha = 0.12f)) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.WarningAmber, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("Registro e dati ufficiali differiscono", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
-                        if (comparison.monthMismatch) {
-                            Text(
-                                "Questo mese: registro ${comparison.localUnjustifiedMonth} non giust. / ${comparison.localJustifiedMonth} giust. — " +
-                                    "FormeIt ${comparison.officialUnjustifiedMonth ?: "—"} / ${comparison.officialJustifiedMonth ?: "—"}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        if (comparison.yearMismatch) {
-                            Text(
-                                "Anno: registro ${comparison.localUnjustifiedYear} — FormeIt ${comparison.officialUnjustifiedYear}" +
-                                    if (comparison.usesOfficial) " (le statistiche usano il valore ufficiale)" else "",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }

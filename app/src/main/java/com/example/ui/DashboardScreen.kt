@@ -107,12 +107,10 @@ fun DashboardScreen(
     ) {
         // OFFICIAL FORMEIT DATA (hybrid mode)
         item {
-            val comparison by viewModel.hybridComparison.collectAsStateWithLifecycle()
             com.example.ui.formeit.OfficialStatusCard(
                 formeit = formeit,
-                comparison = comparison,
-                lastAbsenceInLedger = { day -> allAbsences.any { it.containsDate(day) } },
-                onAddLastAbsence = { day -> viewModel.addOfficialAbsenceToLedger(day) },
+                ledger = allAbsences,
+                onImport = { choices -> viewModel.importOfficialAbsences(choices) },
                 onOpenHistory = onOpenOfficialHistory
             )
         }
@@ -195,7 +193,7 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = if (residencyStats.isOfficialDriven) "${residencyStats.totalAbsencesCount} assenze (dato FormeIt)" else "${residencyStats.totalAbsencesCount} assenze registrate",
+                            text = "${residencyStats.totalAbsencesCount} assenze registrate",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer

@@ -45,4 +45,15 @@ class OfficialHistoryInferenceTest {
         assertEquals(Certainty.EXACT, d.certainty)
         assertEquals(4, v.days.size)
     }
+
+    @Test
+    fun transits_areCappedToMostRecent() {
+        val base = day(2026, 11, 1)
+        val snaps = (0 until 50).map { i ->
+            val at = base + i * 3_600_000L
+            OfficialSnapshot(at, at, 0, 0, 0, 0, "", if (i % 2 == 0) "FUORI" else "DENTRO", "2026-11-%02dT%02d:00:00.000Z".format(1 + i / 24, i % 24))
+        }
+        val v = OfficialHistoryInference.infer(snaps)
+        assertEquals(OfficialHistoryInference.MAX_TRANSITS, v.transits.size)
+    }
 }

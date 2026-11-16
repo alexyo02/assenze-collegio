@@ -33,6 +33,11 @@ data class OfficialSnapshot(
             ingiustMese == o.ingiustMese && ultimaAssenza == o.ultimaAssenza &&
             transito == o.transito && transitoData == o.transitoData
 
+    /** Same counters and last absence (gate transit ignored). */
+    fun sameCounters(o: OfficialSnapshot) =
+        giustAnno == o.giustAnno && ingiustAnno == o.ingiustAnno && giustMese == o.giustMese &&
+            ingiustMese == o.ingiustMese && ultimaAssenza == o.ultimaAssenza
+
     companion object {
         fun of(p: FormeitProfile, now: Long) = OfficialSnapshot(
             now, now, p.assenzeGiustificateAnno, p.assenzeIngiustificateAnno, p.assenzeGiustificateMese,
@@ -68,6 +73,9 @@ data class OfficialHistoryView(
 )
 
 object OfficialHistoryInference {
+
+    /** Maximum number of gate transits kept: older ones are overwritten by newer ones. */
+    const val MAX_TRANSITS = 20
 
     private fun monthKey(millis: Long): String = SimpleDateFormat("yyyy-MM", Locale.US).format(Date(millis))
 
@@ -128,7 +136,7 @@ object OfficialHistoryInference {
 
         return OfficialHistoryView(
             days = days.values.sortedByDescending { it.dayMillis },
-            transits = transits.values.sortedByDescending { it.atMillis ?: 0L },
+            transits = transits.values.sortedByDescending { it.atMillis ?: 0L }.take(MAX_TRANSITS),
             months = months.values.sortedByDescending { it.key },
             earlierThisYearGiust = earlierG,
             earlierThisYearIngiust = earlierI,
@@ -179,7 +187,7 @@ class OfficialHistoryStore private constructor(context: Context) {
     private val file = File(context.applicationContext.filesDir, "formeit_history.json")
     private val adapter = Moshi.Builder().build().adapter(Any::class.java)
     private val lock = Any()
-    private var snapshots: MutableList<OfficialSnapshot> = load()
+    private var snapshots: MutableList<OfficialSnapshot> = compact(load())
 
     private val _view = MutableStateFlow(OfficialHistoryInference.infer(snapshots))
     val view: StateFlow<OfficialHistoryView> = _view.asStateFlow()
@@ -192,7 +200,7 @@ class OfficialHistoryStore private constructor(context: Context) {
             snapshots[snapshots.lastIndex] = last.copy(lastSeen = now)
         } else {
             snapshots.add(snap)
-            if (snapshots.size > MAX) snapshots = snapshots.takeLast(MAX).toMutableList()
+            snapshots = compact(snapshots)
         }
         save()
         _view.value = OfficialHistoryInference.infer(snapshots)
@@ -201,6 +209,27 @@ class OfficialHistoryStore private constructor(context: Context) {
     fun clear() = synchronized(lock) {
         snapshots.clear(); file.delete()
         _view.value = OfficialHistoryInference.infer(snapshots)
+    }
+
+    /**
+     * Snapshots that differ from the previous one only by the gate transit carry no absence
+     * information: only those holding the latest [OfficialHistoryInference.MAX_TRANSITS] transits
+     * are kept, so old transits are overwritten instead of piling up. Snapshots where counters
+     * or the last absence changed are always kept (they rebuild the absence history).
+     */
+    private fun compact(list: List<OfficialSnapshot>): MutableList<OfficialSnapshot> {
+        val transitOnly = BooleanArray(list.size) { i ->
+            i > 0 && list[i].sameCounters(list[i - 1])
+        }
+        val recentTransits = list.asReversed().map { it.transito + "|" + it.transitoData }
+            .distinct().take(OfficialHistoryInference.MAX_TRANSITS).toSet()
+        val out = mutableListOf<OfficialSnapshot>()
+        list.forEachIndexed { i, s ->
+            val keep = !transitOnly[i] || (s.transito + "|" + s.transitoData) in recentTransits || i == list.lastIndex
+            if (keep) out.add(s)
+            else out[out.lastIndex] = out.last().copy(lastSeen = maxOf(out.last().lastSeen, s.lastSeen))
+        }
+        return (if (out.size > MAX) out.takeLast(MAX) else out).toMutableList()
     }
 
     private fun save() {
@@ -229,7 +258,7 @@ class OfficialHistoryStore private constructor(context: Context) {
     }.getOrElse { mutableListOf() }
 
     companion object {
-        private const val MAX = 5000
+        private const val MAX = 2000
         @Volatile private var instance: OfficialHistoryStore? = null
         fun get(context: Context): OfficialHistoryStore =
             instance ?: synchronized(this) { instance ?: OfficialHistoryStore(context).also { instance = it } }
